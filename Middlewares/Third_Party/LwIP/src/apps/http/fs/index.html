@@ -1,0 +1,351 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+<meta http-equiv='content-type' content='text/html; charset=UTF-8'>
+<title>Метеостанция</title>
+
+<!-- Подключаем Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: #fff;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        height: 100vh;
+        padding-top: 20px;
+    }
+
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* Два столбца */
+        grid-template-rows: repeat(2, 1fr); /* Две строки */
+        gap: 20px; /* Расстояние между элементами */
+        width: 90%;
+        max-width: 1200px;
+        margin-top: 20px;
+        height: 80vh; /* Высота контейнера */
+    }
+
+    .grid-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    td td {
+        border: none;
+        justify-content: center;
+        align-items: center;
+        background: transparent;
+        resize: none;
+        vertical-align: middle;
+        outline: none;
+        color: #fff;
+        font-size: 18px;
+        width: 40px;
+        height: 18px;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+        overflow: hidden;
+    }
+    td {
+        font-size: 18px;
+    }
+
+    img {
+        vertical-align: middle;
+    }
+
+    tr:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    tr:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    h2 {
+        margin: 0;
+        padding: 0;
+    }
+
+    canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Медиа-запрос для мобильных устройств */
+    @media (max-width: 768px) {
+        .grid-container {
+            grid-template-columns: 1fr; /* Один столбец */
+            grid-template-rows: repeat(4, auto); /* Четыре строки */
+            height: auto; /* Автоматическая высота */
+        }
+
+        .grid-item {
+            width: 100%; /* Ширина 100% */
+            margin-bottom: 20px; /* Отступ между блоками */
+        }
+    }
+</style>
+
+<script>
+var xhr;
+var tempChart, presChart, humidChart;
+var tempData = [], presData = [], humidData = [];
+var labels = [];
+
+function onload() {
+    xhr = new XMLHttpRequest();
+    initializeCharts();
+    Timer1();
+}
+
+function initializeCharts() {
+    const tempCtx = document.getElementById('tempChart').getContext('2d');
+    const presCtx = document.getElementById('presChart').getContext('2d');
+    const humidCtx = document.getElementById('humidChart').getContext('2d');
+
+    // Общие настройки для всех графиков
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 200 // Уменьшаем длительность анимации
+        },
+        scales: {
+            x: {
+                display: true,
+                title: {
+                    display: true,
+                    text: 'Время',
+                    color: '#fff'
+                },
+                ticks: {
+                    color: '#fff'
+                },
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                }
+            },
+            y: {
+                display: true,
+                title: {
+                    display: true,
+                    text: 'Значение',
+                    color: '#fff'
+                },
+                ticks: {
+                    color: '#fff'
+                },
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                labels: {
+                    color: '#fff'
+                }
+            }
+        }
+    };
+
+    tempChart = new Chart(tempCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Температура (°C)',
+                data: tempData,
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            ...commonOptions,
+            scales: {
+                ...commonOptions.scales,
+                y: {
+                    ...commonOptions.scales.y,
+                    title: {
+                        ...commonOptions.scales.y.title,
+                        text: 'Температура (°C)'
+                    }
+                }
+            }
+        }
+    });
+
+    presChart = new Chart(presCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Давление (Па)',
+                data: presData,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            ...commonOptions,
+            scales: {
+                ...commonOptions.scales,
+                y: {
+                    ...commonOptions.scales.y,
+                    title: {
+                        ...commonOptions.scales.y.title,
+                        text: 'Давление (Па)'
+                    }
+                }
+            }
+        }
+    });
+
+    humidChart = new Chart(humidCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Влажность (%)',
+                data: humidData,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            ...commonOptions,
+            scales: {
+                ...commonOptions.scales,
+                y: {
+                    ...commonOptions.scales.y,
+                    title: {
+                        ...commonOptions.scales.y.title,
+                        text: 'Влажность (%)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function Timer1() {
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            let str = xhr.responseText; // Используем responseText объекта xhr
+            console.log("Данные с сервера:", str); // Логируем данные для отладки
+            str = str.split(" ");
+            document.getElementById("temp_txt").textContent = str[0];
+            document.getElementById("pres_txt").textContent = str[1];
+            document.getElementById("humid_txt").textContent = str[2];
+
+            // Обновляем данные графиков
+            const time = new Date().toLocaleTimeString();
+            labels.push(time);
+            tempData.push(parseFloat(str[0]));
+            presData.push(parseFloat(str[1]));
+            humidData.push(parseFloat(str[2]));
+
+            // Ограничиваем количество точек на графике (например, последние 20 значений)
+            if (labels.length > 20) {
+                labels.shift();
+                tempData.shift();
+                presData.shift();
+                humidData.shift();
+            }
+
+            // Обновляем графики с анимацией
+            tempChart.data.labels = labels;
+            tempChart.data.datasets[0].data = tempData;
+            tempChart.update({ duration: 200 }); // Анимация с длительностью 200 мс
+
+            presChart.data.labels = labels;
+            presChart.data.datasets[0].data = presData;
+            presChart.update({ duration: 200 }); // Анимация с длительностью 200 мс
+
+            humidChart.data.labels = labels;
+            humidChart.data.datasets[0].data = humidData;
+            humidChart.update({ duration: 200 }); // Анимация с длительностью 200 мс
+        }
+    }
+    xhr.open("GET", "get_value", true);
+    xhr.send(null);
+    idTimer1 = setTimeout(Timer1, 1000); // Исправлено: убраны кавычки
+}
+</script>
+
+</head>
+
+<body onload="onload()">
+    <h2>Web-метеостанция</h2>
+    <div class="grid-container">
+        <!-- Основной блок с данными -->
+        <div class="grid-item">
+            <table align="center">
+                <tr>
+                    <td><img src='img/temperature.png' width="50" height="50" /></td>
+                    <td valign="center">Температура</td>
+                    <td id="temp_txt"></td>
+                    <td>     °C</td>
+                </tr>
+
+                <tr>
+                    <td><img src='img/pressure.png' width="50" height="50" /></td>
+                    <td valign="center">Давление</td>
+                    <td id="pres_txt"></td>
+                    <td>     Па</td>
+                </tr>
+
+                <tr>
+                    <td><img src='img/humidity.png' width="50" height="50" /></td>
+                    <td valign="center">Влажность</td>
+                    <td id="humid_txt"></td>
+                    <td>     %</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- График температуры -->
+        <div class="grid-item">
+            <canvas id="tempChart"></canvas>
+        </div>
+
+        <!-- График давления -->
+        <div class="grid-item">
+            <canvas id="presChart"></canvas>
+        </div>
+
+        <!-- График влажности -->
+        <div class="grid-item">
+            <canvas id="humidChart"></canvas>
+        </div>
+    </div>
+</body>
+
+</html>
