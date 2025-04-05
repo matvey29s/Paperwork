@@ -25,13 +25,13 @@
 
     .grid-container {
         display: grid;
-        grid-template-columns: repeat(2, 1fr); /* Два столбца */
-        grid-template-rows: repeat(2, 1fr); /* Две строки */
-        gap: 20px; /* Расстояние между элементами */
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 20px;
         width: 90%;
         max-width: 1200px;
         margin-top: 20px;
-        height: 80vh; /* Высота контейнера */
+        height: 80vh;
     }
 
     .grid-item {
@@ -71,6 +71,7 @@
     }
     td {
         font-size: 18px;
+        padding: 8px;
     }
 
     img {
@@ -88,6 +89,7 @@
     h2 {
         margin: 0;
         padding: 0;
+        margin-bottom: 20px;
     }
 
     canvas {
@@ -95,17 +97,71 @@
         height: 100% !important;
     }
 
+    .threshold-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .threshold-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .threshold-group label {
+        min-width: 100px;
+        font-size: 14px;
+    }
+
+    .threshold-group input {
+        flex: 1;
+        padding: 6px 10px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 14px;
+    }
+
+    .threshold-group button {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: none;
+        background: #4CAF50;
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s;
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
+    .threshold-group button:hover {
+        background: #45a049;
+    }
+
     /* Медиа-запрос для мобильных устройств */
     @media (max-width: 768px) {
         .grid-container {
-            grid-template-columns: 1fr; /* Один столбец */
-            grid-template-rows: repeat(4, auto); /* Четыре строки */
-            height: auto; /* Автоматическая высота */
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, auto);
+            height: auto;
         }
 
         .grid-item {
-            width: 100%; /* Ширина 100% */
-            margin-bottom: 20px; /* Отступ между блоками */
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .threshold-group {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .threshold-group input {
+            width: 100%;
         }
     }
 </style>
@@ -115,11 +171,116 @@ var xhr;
 var tempChart, presChart, humidChart;
 var tempData = [], presData = [], humidData = [];
 var labels = [];
+var idTimer1;
+var highTempThreshold = null;
+var lowHumidityThreshold = null;
+var highPressureThreshold = null;
 
 function onload() {
     xhr = new XMLHttpRequest();
     initializeCharts();
     Timer1();
+    loadThresholds();
+}
+
+function loadThresholds() {
+    const savedTemp = localStorage.getItem('highTempThreshold');
+    const savedHumidity = localStorage.getItem('lowHumidityThreshold');
+    const savedPressure = localStorage.getItem('highPressureThreshold');
+    
+    if (savedTemp) {
+        document.getElementById('tempThreshold').value = savedTemp;
+        highTempThreshold = parseFloat(savedTemp);
+    }
+    
+    if (savedHumidity) {
+        document.getElementById('humidityThreshold').value = savedHumidity;
+        lowHumidityThreshold = parseFloat(savedHumidity);
+    }
+    
+    if (savedPressure) {
+        document.getElementById('pressureThreshold').value = savedPressure;
+        highPressureThreshold = parseFloat(savedPressure);
+    }
+}
+
+function saveThresholds() {
+    if (highTempThreshold !== null) {
+        localStorage.setItem('highTempThreshold', highTempThreshold.toString());
+    }
+    if (lowHumidityThreshold !== null) {
+        localStorage.setItem('lowHumidityThreshold', lowHumidityThreshold.toString());
+    }
+    if (highPressureThreshold !== null) {
+        localStorage.setItem('highPressureThreshold', highPressureThreshold.toString());
+    }
+}
+
+function setTemperatureThreshold() {
+    const value = parseFloat(document.getElementById('tempThreshold').value);
+    if (!isNaN(value)) {
+        highTempThreshold = value;
+        saveThresholds();
+        alert(`Установлен порог температуры: ${value}°C. При превышении будет отправлен запрос.`);
+    } else {
+        alert('Введите корректное значение температуры.');
+    }
+}
+
+function setHumidityThreshold() {
+    const value = parseFloat(document.getElementById('humidityThreshold').value);
+    if (!isNaN(value)) {
+        lowHumidityThreshold = value;
+        saveThresholds();
+        alert(`Установлен порог влажности: ${value}%. При снижении ниже будет отправлен запрос.`);
+    } else {
+        alert('Введите корректное значение влажности.');
+    }
+}
+
+function setPressureThreshold() {
+    const value = parseFloat(document.getElementById('pressureThreshold').value);
+    if (!isNaN(value)) {
+        highPressureThreshold = value;
+        saveThresholds();
+        alert(`Установлен порог давления: ${value}Па. При превышении будет отправлен запрос.`);
+    } else {
+        alert('Введите корректное значение давления.');
+    }
+}
+
+function checkThresholds(temp, pressure, humidity) {
+    if (highTempThreshold !== null && temp > highTempThreshold) {
+        sendAlert('temperature', temp);
+    }
+    
+    if (lowHumidityThreshold !== null && humidity < lowHumidityThreshold) {
+        sendAlert('humidity', humidity);
+    }
+    
+    if (highPressureThreshold !== null && pressure > highPressureThreshold) {
+        sendAlert('pressure', pressure);
+    }
+}
+
+function sendAlert(type, value) {
+    console.log(`ALERT: ${type} threshold exceeded! Value: ${value}`);
+    // Реальная отправка на сервер (раскомментировать и настроить):
+    /*
+    fetch(`/alert?type=${type}&value=${value}`)
+      .then(response => console.log('Alert sent'))
+      .catch(error => console.error('Error:', error));
+    */
+    alert(`Внимание! ${getAlertText(type)}: ${value}`);
+}
+
+function getAlertText(type) {
+    switch(type) {
+        case 'temperature': return 'Температура превысила порог';
+        case 'humidity': return 'Влажность ниже порога';
+        case 'pressure': return 'Давление превысило порог';
+        default: return 'Пороговое значение достигнуто';
+    }
 }
 
 function initializeCharts() {
@@ -127,12 +288,11 @@ function initializeCharts() {
     const presCtx = document.getElementById('presChart').getContext('2d');
     const humidCtx = document.getElementById('humidChart').getContext('2d');
 
-    // Общие настройки для всех графиков
     const commonOptions = {
         responsive: true,
         maintainAspectRatio: false,
         animation: {
-            duration: 200 // Уменьшаем длительность анимации
+            duration: 200
         },
         scales: {
             x: {
@@ -258,21 +418,26 @@ function initializeCharts() {
 function Timer1() {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
-            let str = xhr.responseText; // Используем responseText объекта xhr
-            console.log("Данные с сервера:", str); // Логируем данные для отладки
+            let str = xhr.responseText;
+            console.log("Данные с сервера:", str);
             str = str.split(" ");
+            
+            const currentTemp = parseFloat(str[0]);
+            const currentPressure = parseFloat(str[1]);
+            const currentHumidity = parseFloat(str[2]);
+            
             document.getElementById("temp_txt").textContent = str[0];
             document.getElementById("pres_txt").textContent = str[1];
             document.getElementById("humid_txt").textContent = str[2];
 
-            // Обновляем данные графиков
+            checkThresholds(currentTemp, currentPressure, currentHumidity);
+
             const time = new Date().toLocaleTimeString();
             labels.push(time);
-            tempData.push(parseFloat(str[0]));
-            presData.push(parseFloat(str[1]));
-            humidData.push(parseFloat(str[2]));
+            tempData.push(currentTemp);
+            presData.push(currentPressure);
+            humidData.push(currentHumidity);
 
-            // Ограничиваем количество точек на графике (например, последние 20 значений)
             if (labels.length > 20) {
                 labels.shift();
                 tempData.shift();
@@ -280,23 +445,22 @@ function Timer1() {
                 humidData.shift();
             }
 
-            // Обновляем графики с анимацией
             tempChart.data.labels = labels;
             tempChart.data.datasets[0].data = tempData;
-            tempChart.update({ duration: 200 }); // Анимация с длительностью 200 мс
+            tempChart.update({ duration: 200 });
 
             presChart.data.labels = labels;
             presChart.data.datasets[0].data = presData;
-            presChart.update({ duration: 200 }); // Анимация с длительностью 200 мс
+            presChart.update({ duration: 200 });
 
             humidChart.data.labels = labels;
             humidChart.data.datasets[0].data = humidData;
-            humidChart.update({ duration: 200 }); // Анимация с длительностью 200 мс
+            humidChart.update({ duration: 200 });
         }
     }
     xhr.open("GET", "get_value", true);
     xhr.send(null);
-    idTimer1 = setTimeout(Timer1, 1000); // Исправлено: убраны кавычки
+    idTimer1 = setTimeout(Timer1, 1000);
 }
 </script>
 
@@ -305,47 +469,62 @@ function Timer1() {
 <body onload="onload()">
     <h2>Web-метеостанция</h2>
     <div class="grid-container">
-        <!-- Основной блок с данными -->
         <div class="grid-item">
             <table align="center">
                 <tr>
                     <td><img src='img/temperature.png' width="50" height="50" /></td>
                     <td valign="center">Температура</td>
                     <td id="temp_txt"></td>
-                    <td>     °C</td>
+                    <td>°C</td>
                 </tr>
 
                 <tr>
                     <td><img src='img/pressure.png' width="50" height="50" /></td>
                     <td valign="center">Давление</td>
                     <td id="pres_txt"></td>
-                    <td>     Па</td>
+                    <td>Па</td>
                 </tr>
 
                 <tr>
                     <td><img src='img/humidity.png' width="50" height="50" /></td>
                     <td valign="center">Влажность</td>
                     <td id="humid_txt"></td>
-                    <td>     %</td>
+                    <td>%</td>
                 </tr>
             </table>
+            
+            <div class="threshold-controls">
+                <div class="threshold-group">
+                    <label for="tempThreshold">Темп. ></label>
+                    <input type="number" id="tempThreshold" placeholder="°C">
+                    <button onclick="setTemperatureThreshold()">Уст.</button>
+                </div>
+                
+                <div class="threshold-group">
+                    <label for="humidityThreshold">Влаг. <</label>
+                    <input type="number" id="humidityThreshold" placeholder="%">
+                    <button onclick="setHumidityThreshold()">Уст.</button>
+                </div>
+                
+                <div class="threshold-group">
+                    <label for="pressureThreshold">Давл. ></label>
+                    <input type="number" id="pressureThreshold" placeholder="Па">
+                    <button onclick="setPressureThreshold()">Уст.</button>
+                </div>
+            </div>
         </div>
 
-        <!-- График температуры -->
         <div class="grid-item">
             <canvas id="tempChart"></canvas>
         </div>
 
-        <!-- График давления -->
         <div class="grid-item">
             <canvas id="presChart"></canvas>
         </div>
 
-        <!-- График влажности -->
         <div class="grid-item">
             <canvas id="humidChart"></canvas>
         </div>
     </div>
 </body>
-
 </html>
