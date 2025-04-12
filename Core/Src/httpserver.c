@@ -10,7 +10,8 @@
 #include "cmsis_os.h"
 
 extern float Temperature, Pressure, Humidity;
-
+extern uint8_t alert[3];
+uint8_t datatest[50];
 static void http_server(struct netconn *conn)
 {
 	struct netbuf *inbuf;
@@ -67,6 +68,22 @@ static void http_server(struct netconn *conn)
 				netconn_write(conn, (const unsigned char*)pagedata, (size_t)len, NETCONN_NOCOPY);
 				vPortFree(pagedata);
 			}
+			if (strncmp((char const *)buf,"GET /TEMP=",10)==0)
+			{
+				alert[0]=buf[10];
+
+			}
+			if (strncmp((char const *)buf,"GET /PRES=",10)==0)
+						{
+
+							alert[1]=buf[10];
+
+						}
+			if (strncmp((char const *)buf,"GET /HUMID=",11)==0)
+						{
+							//memcpy(datatest,buf,50);
+							alert[2]=buf[11];
+						}
 			else
 			{
 				fs_open(&file, "/404.html");

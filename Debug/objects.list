@@ -29,6 +29,8 @@
 "./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.o"
 "./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim.o"
 "./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim_ex.o"
+"./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_uart.o"
+"./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_uart_ex.o"
 "./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_usb.o"
 "./LWIP/App/lwip.o"
 "./LWIP/Target/ethernetif.o"

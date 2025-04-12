@@ -72,7 +72,6 @@ Reset_Handler:
 
 CopyDataInit:
   ldr r4, [r2, r3]
-
   str r4, [r0, r3]
   adds r3, r3, #4
 
