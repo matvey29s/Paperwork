@@ -61,10 +61,6 @@ void Error_Handler(void);
 #define USER_Btn_GPIO_Port GPIOC
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
-#define HUMID_SWITCH_Pin GPIO_PIN_0
-#define HUMID_SWITCH_GPIO_Port GPIOC
-#define TEMP_SWITCH_Pin GPIO_PIN_3
-#define TEMP_SWITCH_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14

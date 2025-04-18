@@ -74,7 +74,12 @@
         padding: 8px;
     }
 
-    .warning {
+    .warning-low {
+        color: #ffff44 !important;
+        font-weight: bold;
+    }
+
+    .warning-high {
         color: #ff4444 !important;
         font-weight: bold;
     }
@@ -110,18 +115,25 @@
         margin-top: 20px;
     }
 
-    .threshold-group {
+    .threshold-range-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        width: 100%;
+    }
+
+    .threshold-range-row {
         display: flex;
         align-items: center;
         gap: 8px;
     }
 
-    .threshold-group label {
-        min-width: 100px;
+    .threshold-range-row label {
+        min-width: 50px;
         font-size: 14px;
     }
 
-    .threshold-group input {
+    .threshold-range-row input {
         flex: 1;
         padding: 6px 10px;
         border-radius: 4px;
@@ -131,8 +143,8 @@
         font-size: 14px;
     }
 
-    .threshold-group button {
-        padding: 6px 12px;
+    .threshold-range-row button {
+        padding: 8px 12px;
         border-radius: 4px;
         border: none;
         background: #4CAF50;
@@ -141,9 +153,10 @@
         transition: background 0.3s;
         font-size: 14px;
         white-space: nowrap;
+        height: 36px;
     }
 
-    .threshold-group button:hover {
+    .threshold-range-row button:hover {
         background: #45a049;
     }
 
@@ -186,12 +199,12 @@
             margin-bottom: 20px;
         }
 
-        .threshold-group {
+        .threshold-range-row {
             flex-direction: column;
             align-items: flex-start;
         }
 
-        .threshold-group input {
+        .threshold-range-row input {
             width: 100%;
         }
 
@@ -213,14 +226,16 @@ var tempChart, presChart, humidChart;
 var tempData = [], presData = [], humidData = [];
 var labels = [];
 var idTimer1;
-var highTempThreshold = null;
-var lowHumidityThreshold = null;
-var highPressureThreshold = null;
+
+// Пороговые значения (min, max)
+var tempThresholds = { min: null, max: null };
+var humidThresholds = { min: null, max: null };
+var presThresholds = { min: null, max: null };
 
 const alertState = {
-    temp: { active: false, lastAlert: 0 },
-    humid: { active: false, lastAlert: 0 },
-    pres: { active: false, lastAlert: 0 }
+    temp: { active: false, lastAlert: 0, status: 0 },
+    humid: { active: false, lastAlert: 0, status: 0 },
+    pres: { active: false, lastAlert: 0, status: 0 }
 };
 
 const ALERT_INTERVAL = 5000;
@@ -239,7 +254,6 @@ function showNotification(message) {
     notification.textContent = message;
     container.appendChild(notification);
     
-    // Автоматическое удаление через 5 секунд
     setTimeout(() => {
         notification.remove();
     }, 5000);
@@ -253,69 +267,127 @@ function createNotificationContainer() {
 }
 
 function loadThresholds() {
-    const savedTemp = localStorage.getItem('highTempThreshold');
-    const savedHumidity = localStorage.getItem('lowHumidityThreshold');
-    const savedPressure = localStorage.getItem('highPressureThreshold');
-    
-    if (savedTemp) {
-        document.getElementById('tempThreshold').value = savedTemp;
-        highTempThreshold = parseFloat(savedTemp);
+    // Загрузка температурных порогов
+    const savedTempMin = localStorage.getItem('tempThresholdMin');
+    const savedTempMax = localStorage.getItem('tempThresholdMax');
+    if (savedTempMin) {
+        document.getElementById('tempThresholdMin').value = savedTempMin;
+        tempThresholds.min = parseFloat(savedTempMin);
     }
-    
-    if (savedHumidity) {
-        document.getElementById('humidityThreshold').value = savedHumidity;
-        lowHumidityThreshold = parseFloat(savedHumidity);
+    if (savedTempMax) {
+        document.getElementById('tempThresholdMax').value = savedTempMax;
+        tempThresholds.max = parseFloat(savedTempMax);
     }
-    
-    if (savedPressure) {
-        document.getElementById('pressureThreshold').value = savedPressure;
-        highPressureThreshold = parseFloat(savedPressure);
+
+    // Загрузка порогов влажности
+    const savedHumidMin = localStorage.getItem('humidThresholdMin');
+    const savedHumidMax = localStorage.getItem('humidThresholdMax');
+    if (savedHumidMin) {
+        document.getElementById('humidThresholdMin').value = savedHumidMin;
+        humidThresholds.min = parseFloat(savedHumidMin);
+    }
+    if (savedHumidMax) {
+        document.getElementById('humidThresholdMax').value = savedHumidMax;
+        humidThresholds.max = parseFloat(savedHumidMax);
+    }
+
+    // Загрузка порогов давления
+    const savedPresMin = localStorage.getItem('presThresholdMin');
+    const savedPresMax = localStorage.getItem('presThresholdMax');
+    if (savedPresMin) {
+        document.getElementById('presThresholdMin').value = savedPresMin;
+        presThresholds.min = parseFloat(savedPresMin);
+    }
+    if (savedPresMax) {
+        document.getElementById('presThresholdMax').value = savedPresMax;
+        presThresholds.max = parseFloat(savedPresMax);
     }
 }
 
 function saveThresholds() {
-    if (highTempThreshold !== null) {
-        localStorage.setItem('highTempThreshold', highTempThreshold.toString());
+    // Сохранение температурных порогов
+    if (tempThresholds.min !== null) {
+        localStorage.setItem('tempThresholdMin', tempThresholds.min.toString());
     }
-    if (lowHumidityThreshold !== null) {
-        localStorage.setItem('lowHumidityThreshold', lowHumidityThreshold.toString());
+    if (tempThresholds.max !== null) {
+        localStorage.setItem('tempThresholdMax', tempThresholds.max.toString());
     }
-    if (highPressureThreshold !== null) {
-        localStorage.setItem('highPressureThreshold', highPressureThreshold.toString());
+
+    // Сохранение порогов влажности
+    if (humidThresholds.min !== null) {
+        localStorage.setItem('humidThresholdMin', humidThresholds.min.toString());
+    }
+    if (humidThresholds.max !== null) {
+        localStorage.setItem('humidThresholdMax', humidThresholds.max.toString());
+    }
+
+    // Сохранение порогов давления
+    if (presThresholds.min !== null) {
+        localStorage.setItem('presThresholdMin', presThresholds.min.toString());
+    }
+    if (presThresholds.max !== null) {
+        localStorage.setItem('presThresholdMax', presThresholds.max.toString());
     }
 }
 
 function setTemperatureThreshold() {
-    const value = parseFloat(document.getElementById('tempThreshold').value);
-    if (!isNaN(value)) {
-        highTempThreshold = value;
-        saveThresholds();
-        showNotification(`Установлен порог температуры: ${value}°C`);
+    const minValue = parseFloat(document.getElementById('tempThresholdMin').value);
+    const maxValue = parseFloat(document.getElementById('tempThresholdMax').value);
+    
+    if (!isNaN(minValue)) {
+        tempThresholds.min = minValue;
     } else {
-        showNotification('Введите корректное значение температуры.');
+        tempThresholds.min = null;
     }
+    
+    if (!isNaN(maxValue)) {
+        tempThresholds.max = maxValue;
+    } else {
+        tempThresholds.max = null;
+    }
+    
+    saveThresholds();
+    showNotification(`Установлены пороги температуры: ${tempThresholds.min ?? '-'}°C - ${tempThresholds.max ?? '-'}°C`);
 }
 
 function setHumidityThreshold() {
-    const value = parseFloat(document.getElementById('humidityThreshold').value);
-    if (!isNaN(value)) {
-        lowHumidityThreshold = value;
-        saveThresholds();
-        showNotification(`Установлен порог влажности: ${value}%`);
+    const minValue = parseFloat(document.getElementById('humidThresholdMin').value);
+    const maxValue = parseFloat(document.getElementById('humidThresholdMax').value);
+    
+    if (!isNaN(minValue)) {
+        humidThresholds.min = minValue;
     } else {
-        showNotification('Введите корректное значение влажности.');
+        humidThresholds.min = null;
     }
+    
+    if (!isNaN(maxValue)) {
+        humidThresholds.max = maxValue;
+    } else {
+        humidThresholds.max = null;
+    }
+    
+    saveThresholds();
+    showNotification(`Установлены пороги влажности: ${humidThresholds.min ?? '-'}% - ${humidThresholds.max ?? '-'}%`);
 }
 
 function setPressureThreshold() {
-    const value = parseFloat(document.getElementById('pressureThreshold').value);
-    if (!isNaN(value)) {
-        highPressureThreshold = value;
-        saveThresholds();
-        showNotification(`Установлен порог давления: ${value}Па`);
+    const minValue = parseFloat(document.getElementById('presThresholdMin').value);
+    const maxValue = parseFloat(document.getElementById('presThresholdMax').value);
+    
+    if (!isNaN(minValue)) {
+        presThresholds.min = minValue;
     } else {
-        showNotification('Введите корректное значение давления.');
+        presThresholds.min = null;
     }
+    
+    if (!isNaN(maxValue)) {
+        presThresholds.max = maxValue;
+    } else {
+        presThresholds.max = null;
+    }
+    
+    saveThresholds();
+    showNotification(`Установлены пороги давления: ${presThresholds.min ?? '-'}Па - ${presThresholds.max ?? '-'}Па`);
 }
 
 function sendAlert(type, value) {
@@ -333,55 +405,85 @@ function checkThresholds(temp, pressure, humidity) {
     const presElement = document.getElementById("pres_txt");
 
     // Сбросить классы перед проверкой
-    tempElement.classList.remove('warning');
-    humidElement.classList.remove('warning');
-    presElement.classList.remove('warning');
+    tempElement.classList.remove('warning-low', 'warning-high');
+    humidElement.classList.remove('warning-low', 'warning-high');
+    presElement.classList.remove('warning-low', 'warning-high');
 
     // Проверка температуры
-    if (highTempThreshold !== null) {
-        if (temp > highTempThreshold) {
-            tempElement.classList.add('warning');
-            if (!alertState.temp.active || now - alertState.temp.lastAlert >= ALERT_INTERVAL) {
-                alertState.temp.active = true;
-                alertState.temp.lastAlert = now;
-                showNotification(`Внимание! Температура превысила порог: ${temp}°C`);
+    if (tempThresholds.min !== null || tempThresholds.max !== null) {
+        let newStatus = 0; // 0 - в норме, 1 - ниже минимума, 2 - выше максимума
+        
+        if (tempThresholds.min !== null && temp < tempThresholds.min) {
+            tempElement.classList.add('warning-low');
+            newStatus = 1;
+        } else if (tempThresholds.max !== null && temp > tempThresholds.max) {
+            tempElement.classList.add('warning-high');
+            newStatus = 2;
+        }
+        
+        if (newStatus !== alertState.temp.status || now - alertState.temp.lastAlert >= ALERT_INTERVAL) {
+            alertState.temp.status = newStatus;
+            alertState.temp.lastAlert = now;
+            
+            if (newStatus === 1) {
+                showNotification(`Внимание! Температура ниже минимального порога: ${temp}°C`);
+            } else if (newStatus === 2) {
+                showNotification(`Внимание! Температура выше максимального порога: ${temp}°C`);
             }
-            sendAlert('TEMP', 1);
-        } else if (alertState.temp.active) {
-            alertState.temp.active = false;
-            sendAlert('TEMP', 0);
+            
+            sendAlert('TEMP', newStatus);
         }
     }
 
     // Проверка влажности
-    if (lowHumidityThreshold !== null) {
-        if (humidity < lowHumidityThreshold) {
-            humidElement.classList.add('warning');
-            if (!alertState.humid.active || now - alertState.humid.lastAlert >= ALERT_INTERVAL) {
-                alertState.humid.active = true;
-                alertState.humid.lastAlert = now;
-                showNotification(`Внимание! Влажность ниже порога: ${humidity}%`);
+    if (humidThresholds.min !== null || humidThresholds.max !== null) {
+        let newStatus = 0;
+        
+        if (humidThresholds.min !== null && humidity < humidThresholds.min) {
+            humidElement.classList.add('warning-low');
+            newStatus = 1;
+        } else if (humidThresholds.max !== null && humidity > humidThresholds.max) {
+            humidElement.classList.add('warning-high');
+            newStatus = 2;
+        }
+        
+        if (newStatus !== alertState.humid.status || now - alertState.humid.lastAlert >= ALERT_INTERVAL) {
+            alertState.humid.status = newStatus;
+            alertState.humid.lastAlert = now;
+            
+            if (newStatus === 1) {
+                showNotification(`Внимание! Влажность ниже минимального порога: ${humidity}%`);
+            } else if (newStatus === 2) {
+                showNotification(`Внимание! Влажность выше максимального порога: ${humidity}%`);
             }
-            sendAlert('HUMID', 1);
-        } else if (alertState.humid.active) {
-            alertState.humid.active = false;
-            sendAlert('HUMID', 0);
+            
+            sendAlert('HUMID', newStatus);
         }
     }
 
     // Проверка давления
-    if (highPressureThreshold !== null) {
-        if (pressure > highPressureThreshold) {
-            presElement.classList.add('warning');
-            if (!alertState.pres.active || now - alertState.pres.lastAlert >= ALERT_INTERVAL) {
-                alertState.pres.active = true;
-                alertState.pres.lastAlert = now;
-                showNotification(`Внимание! Давление превысило порог: ${pressure}Па`);
+    if (presThresholds.min !== null || presThresholds.max !== null) {
+        let newStatus = 0;
+        
+        if (presThresholds.min !== null && pressure < presThresholds.min) {
+            presElement.classList.add('warning-low');
+            newStatus = 1;
+        } else if (presThresholds.max !== null && pressure > presThresholds.max) {
+            presElement.classList.add('warning-high');
+            newStatus = 2;
+        }
+        
+        if (newStatus !== alertState.pres.status || now - alertState.pres.lastAlert >= ALERT_INTERVAL) {
+            alertState.pres.status = newStatus;
+            alertState.pres.lastAlert = now;
+            
+            if (newStatus === 1) {
+                showNotification(`Внимание! Давление ниже минимального порога: ${pressure}Па`);
+            } else if (newStatus === 2) {
+                showNotification(`Внимание! Давление выше максимального порога: ${pressure}Па`);
             }
-            sendAlert('PRES', 1);
-        } else if (alertState.pres.active) {
-            alertState.pres.active = false;
-            sendAlert('PRES', 0);
+            
+            sendAlert('PRES', newStatus);
         }
     }
 }
@@ -473,17 +575,13 @@ function initializeCharts() {
             datasets: [{
                 label: 'Влажность (%)',
                 data: humidData,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2,
-                fill: false
-            }]
+                           }]
         },
         options: commonOptions
     });
 }
 
 function cleanValue(value) {
-    // Удаляем все нечисловые символы, кроме точки и минуса
     return value.replace(/[^\d.-]/g, '');
 }
 
@@ -494,7 +592,6 @@ function Timer1() {
             let str = updateXhr.responseText;
             console.log("Данные с сервера:", str);
             
-            // Ищем числовые значения в формате "число число число"
             const match = str.match(/([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
             
             if (match && match.length >= 4) {
@@ -563,22 +660,37 @@ function Timer1() {
             </table>
             
             <div class="threshold-controls">
-                <div class="threshold-group">
-                    <label for="tempThreshold">Темп. ></label>
-                    <input type="number" id="tempThreshold" placeholder="°C">
-                    <button onclick="setTemperatureThreshold()">Уст.</button>
+                <!-- Температура -->
+                <div class="threshold-range-group">
+                    
+                    <div class="threshold-range-row">
+                        <label>Темп.</label>
+                        <input type="number" id="tempThresholdMin" placeholder="Минимум">
+                        <input type="number" id="tempThresholdMax" placeholder="Максимум">
+                        <button onclick="setTemperatureThreshold()">Уст.</button>
+                    </div>
                 </div>
                 
-                <div class="threshold-group">
-                    <label for="humidityThreshold">Влаг. <</label>
-                    <input type="number" id="humidityThreshold" placeholder="%">
-                    <button onclick="setHumidityThreshold()">Уст.</button>
+                <!-- Влажность -->
+                <div class="threshold-range-group">
+                    
+                    <div class="threshold-range-row">
+                        <label>Влаж.</label>
+                        <input type="number" id="humidThresholdMin" placeholder="Минимум">
+                        <input type="number" id="humidThresholdMax" placeholder="Максимум">
+                        <button onclick="setHumidityThreshold()">Уст.</button>
+                    </div>
                 </div>
                 
-                <div class="threshold-group">
-                    <label for="pressureThreshold">Давл. ></label>
-                    <input type="number" id="pressureThreshold" placeholder="Па">
-                    <button onclick="setPressureThreshold()">Уст.</button>
+                <!-- Давление -->
+                <div class="threshold-range-group">
+                    
+                    <div class="threshold-range-row">
+                        <label>Давл.</label>
+                        <input type="number" id="presThresholdMin" placeholder="Минимум">
+                        <input type="number" id="presThresholdMax" placeholder="Максимум">
+                        <button onclick="setPressureThreshold()">Уст.</button>
+                    </div>
                 </div>
             </div>
         </div>

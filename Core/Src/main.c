@@ -336,13 +336,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(HUMID_SWITCH_GPIO_Port, HUMID_SWITCH_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(TEMP_SWITCH_GPIO_Port, TEMP_SWITCH_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USER_Btn_Pin */
   GPIO_InitStruct.Pin = USER_Btn_Pin;
@@ -350,22 +344,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USER_Btn_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : HUMID_SWITCH_Pin */
-  GPIO_InitStruct.Pin = HUMID_SWITCH_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(HUMID_SWITCH_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : TEMP_SWITCH_Pin */
-  GPIO_InitStruct.Pin = TEMP_SWITCH_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(TEMP_SWITCH_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB0 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_7;
+  /*Configure GPIO pins : PB0 PB14 PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_14|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -401,14 +381,19 @@ void StartDefaultTask(void const * argument)
   for(;;)
   {
 	//Температура
-	if (alert[0]==1) {
-		HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_SET);
-	} else HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_RESET);
+	if (alert[0]==49) {
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET);
+	}
+	else {
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_RESET);
+		}
 
-	// Влажность
-	if (alert[2]==1) {
-			HAL_GPIO_WritePin(GPIOС,GPIO_PIN_0,GPIO_PIN_SET);
-		} else HAL_GPIO_WritePin(GPIOС,GPIO_PIN_0,GPIO_PIN_RESET);
+	if (alert[0]==50) {
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_SET);
+		}
+	else{
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_RESET);
+			}
     osDelay(1);
   }
   /* USER CODE END 5 */
