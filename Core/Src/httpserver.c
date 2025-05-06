@@ -37,6 +37,12 @@ static void http_server(struct netconn *conn)
 				netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
 				fs_close(&file);
 			}
+			if (strncmp((char const *)buf,"GET /chart.js",13)==0)
+						{
+							fs_open(&file, "/chart.js");
+							netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
+							fs_close(&file);
+						}
 
 			if (strncmp((char const *)buf,"GET /img/humidity.png",21)==0)
 			{
