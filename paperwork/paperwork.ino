@@ -1,10 +1,10 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
-const char* ssid = "ESP32_AP";
-const char* password = "12345678";
+const char* ssid = "ESP32_AP"; //Название Wi-Fi сети
+const char* password = "12345678"; //Пароль Wi-Fi сети
 
-WebServer server(80);
+WebServer server(80); //Инициализируем порт HTTP сервера
 
 uint8_t uartBuffer[5] = {0}; // Инициализируем нулями
 volatile bool newDataReady = false;

@@ -35,10 +35,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-float Temperature, Pressure, Humidity;
-uint8_t Temperature_rest, Pressure_rest, Humidity_rest;
-uint8_t data[5]={160,0,0,0,254};
-uint8_t alert[3]; // 1-pressure 2-temperature 3-humidity
+float Temperature, Pressure, Humidity; // Параметры среды
+uint8_t data[5]={160,0,0,0,254}; // Массив для отправки данных на ESP32
+uint8_t alert[3]; // Параметры микроклимата 1-Давление 2-Температура 3-Влажность
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,10 +55,6 @@ osThreadId defaultTaskHandle;
 osThreadId myTask02Handle;
 osThreadId myTask03Handle;
 /* USER CODE BEGIN PV */
-
-char USB_firstMessage[] = {"Initialization of Virtual COM Port\n\r"};
-char USB_secondMessage[] = {"HTTP started\n\r"};
-char USB_TxData[80]={};
 
 /* USER CODE END PV */
 
@@ -372,30 +367,28 @@ void StartDefaultTask(void const * argument)
   MX_LWIP_Init();
 
   /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-  http_server_init();
-  BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16);
-  //CDC_Transmit_FS(USB_secondMessage,strlen(USB_firstMessage));
+  http_server_init(); //Инициализируем работу веб-сервера
+  BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16); // Отправляем настройки для датчика BME280
   /* Infinite loop */
   for(;;)
   {
-	//Температура
-	if (alert[0]==49) {
-		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET);
-	}
-	else {
-			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_RESET);
+		//Обработка уведомлений с клиента сайта
+		if (alert[0]==49) {
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_SET); //Включаем реле 1 если поступило уведомление о превышении температуры
+		}
+		else{
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0,GPIO_PIN_RESET); //Иначе выключаем реле 1
 		}
 
-	if (alert[0]==50) {
-		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_SET);
+		if (alert[0]==50) {
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_SET); //Включаем реле 2 если поступило уведомление о малом значении температуры
 		}
-	else{
-			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_RESET);
+		else{
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14,GPIO_PIN_RESET); //Иначе выключаем реле 2
 			}
-    osDelay(1);
-  }
+		osDelay(1);
+   }
   /* USER CODE END 5 */
 }
 
@@ -413,10 +406,7 @@ void StartTask02(void const * argument)
   for(;;)
   {
 	BME280_Measure();
-	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
-	int Temperature_rest = (int)((Temperature - (int)Temperature) * 100);
-	int Pressure_rest = (int)((Pressure - (int)Pressure) * 100);
-	int Humidity_rest = (int)((Humidity - (int)Humidity) * 100);
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7); //Переключение светодиода для индикации работы системы
     osDelay(500);
   }
   /* USER CODE END StartTask02 */
@@ -435,8 +425,7 @@ void StartTask03(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-	sprintf(USB_TxData,"Temperature- %d.%d,     Pressure- %d.%d,     Humidity- %d.%d\n\r", (int)Temperature, Temperature_rest, (int)Pressure, Pressure_rest, (int)Humidity, Humidity_rest);
-	CDC_Transmit_FS(USB_TxData, strlen(USB_TxData));
+	//Собираем массив с данными о климате и отправляем по UART
 	data[0]=160;
 	data[1]=(int)Temperature;
 	data[2]=(uint8_t)(Pressure/1000);

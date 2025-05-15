@@ -9,6 +9,7 @@
 #include "httpserver.h"
 #include "cmsis_os.h"
 
+//Экспортируем переменные с main- файла
 extern float Temperature, Pressure, Humidity;
 extern uint8_t alert[3];
 uint8_t datatest[50];
@@ -20,76 +21,70 @@ static void http_server(struct netconn *conn)
 	u16_t buflen;
 	struct fs_file file;
 
-	/* Read the data from the port, blocking if nothing yet there */
+	//Читаем данные с порта
 	recv_err = netconn_recv(conn, &inbuf);
 
 	if (recv_err == ERR_OK)
 	{
 		if (netconn_err(conn) == ERR_OK)
 		{
-			/* Get the data pointer and length of the data inside a netbuf */
+			/*Получаем указатель на данные,его длину внутри netbuf */
 			netbuf_data(inbuf, (void**)&buf, &buflen);
-
-			/* Check if request to get the index.html */
+			/* Проверяем если запрос на определенный адрес */
 			if (strncmp((char const *)buf,"GET /index.html",15)==0)
-			{
-				fs_open(&file, "/index.html");
-				netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
-				fs_close(&file);
-			}
+				{
+					fs_open(&file, "/index.html");
+					netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
+					fs_close(&file);
+				}
 			if (strncmp((char const *)buf,"GET /chart.js",13)==0)
-						{
-							fs_open(&file, "/chart.js");
-							netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
-							fs_close(&file);
-						}
-
+				{
+					fs_open(&file, "/chart.js");
+					netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
+					fs_close(&file);
+				}
 			if (strncmp((char const *)buf,"GET /img/humidity.png",21)==0)
-			{
-
-				fs_open(&file, "/img/humidity.png");
-				netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
-				fs_close(&file);
-
-			}
+				{
+					fs_open(&file, "/img/humidity.png");
+					netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
+					fs_close(&file);
+				}
 			if (strncmp((char const *)buf,"GET /img/pressure.png",21)==0)
-			{
-				fs_open(&file, "/img/pressure.png");
-				netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
-				fs_close(&file);
-
-			}
+				{
+					fs_open(&file, "/img/pressure.png");
+					netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
+					fs_close(&file);
+				}
 			if (strncmp((char const *)buf,"GET /img/temperature.png",24)==0)
-			{
-				fs_open(&file, "/img/temperature.png");
-				netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
-				fs_close(&file);
-			}
-
+				{
+					fs_open(&file, "/img/temperature.png");
+					netconn_write(conn, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
+					fs_close(&file);
+				}
+			//Отвечаем на запрос клиента о данных температуры, давления, влажности
 			if (strncmp((char const *)buf,"GET /get_value",14)==0)
-			{
-				char *pagedata;
-				pagedata = pvPortMalloc(10);
-				int len = sprintf (pagedata, "%d %d %d", (int)Temperature, (int)Pressure, (int)Humidity);
-				netconn_write(conn, (const unsigned char*)pagedata, (size_t)len, NETCONN_NOCOPY);
-				vPortFree(pagedata);
-			}
+				{
+					char *pagedata;
+					pagedata = pvPortMalloc(10);
+					int len = sprintf (pagedata, "%d %d %d", (int)Temperature, (int)Pressure, (int)Humidity);
+					netconn_write(conn, (const unsigned char*)pagedata, (size_t)len, NETCONN_NOCOPY);
+					vPortFree(pagedata);
+				}
+
+			//Получаем от клиента запрос с данными о выходе параметров за рамки установленных
 			if (strncmp((char const *)buf,"GET /TEMP=",10)==0)
-			{
-				alert[0]=buf[10];
-
-			}
+				{
+					alert[0]=buf[10];
+				}
 			if (strncmp((char const *)buf,"GET /PRES=",10)==0)
-						{
+				{
+					alert[1]=buf[10];
 
-							alert[1]=buf[10];
-
-						}
+				}
 			if (strncmp((char const *)buf,"GET /HUMID=",11)==0)
-						{
-							//memcpy(datatest,buf,50);
-							alert[2]=buf[11];
-						}
+				{
+					alert[2]=buf[11];
+				}
 			else
 			{
 				fs_open(&file, "/404.html");
@@ -98,11 +93,10 @@ static void http_server(struct netconn *conn)
 			}
 		}
 	}
-	/* Close the connection (server closes in HTTP) */
+	/* Закрываем соединение(сервер закрыт в HTTP) */
 	netconn_close(conn);
 
-	/* Delete the buffer (netconn_recv gives us ownership,
-   so we have to make sure to deallocate the buffer) */
+	/* Освобождаем массив */
 	netbuf_delete(inbuf);
 }
 
@@ -112,29 +106,29 @@ static void http_thread(void *arg)
   struct netconn *conn, *newconn;
   err_t err, accept_err;
   
-  /* Create a new TCP connection handle */
+  /* Создаем новый обработчик TCP соединения */
   conn = netconn_new(NETCONN_TCP);
   
   if (conn!= NULL)
   {
-    /* Bind to port 80 (HTTP) with default IP address */
+    /* Привязываем HTTP к порту 80 с обычным IP адресом*/
     err = netconn_bind(conn, IP_ADDR_ANY, 80);
     
     if (err == ERR_OK)
     {
-      /* Put the connection into LISTEN state */
+      /*Ставим соединенение в состояние LISTEN */
       netconn_listen(conn);
   
       while(1) 
       {
-        /* accept any incoming connection */
+        /* Принимаем любые входящие соединения*/
         accept_err = netconn_accept(conn, &newconn);
         if(accept_err == ERR_OK)
         {
-          /* serve connection */
+          /* Соединение с сервером */
           http_server(newconn);
 
-          /* delete connection */
+          /* Отсоединение с сервером */
           netconn_delete(newconn);
         }
       }
